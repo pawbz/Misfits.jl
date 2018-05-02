@@ -272,8 +272,8 @@ end
 
 function Param_CSE(nt,nr;y=nothing, Ay=nothing)
 	paxcorr=Conv.Param_xcorr(nt,collect(1:nr),norm_flag=false)
-	Ax=[zeros(2*nt-1,nr) for ir in 1:nr]
-	Ayy=[zeros(2*nt-1,nr) for ir in 1:nr]
+	Ax=[zeros(2*nt-1,nr-ir+1) for ir in 1:nr]
+	Ayy=[zeros(2*nt-1,nr-ir+1) for ir in 1:nr]
 	if(!(y===nothing))
 		Conv.xcorr!(Ayy,y,paxcorr)
 	elseif(!(Ay===nothing))
@@ -281,7 +281,7 @@ function Param_CSE(nt,nr;y=nothing, Ay=nothing)
 			copy!(Ayy[ir],Ay[ir])
 		end
 	end
-	dAx=[zeros(2*nt-1,nr) for ir in 1:nr]
+	dAx=[zeros(2*nt-1,nr-ir+1) for ir in 1:nr]
 	return Param_CSE(paxcorr, Ax, Ayy, dAx)
 end
 
