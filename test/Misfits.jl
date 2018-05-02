@@ -6,6 +6,26 @@ using BenchmarkTools
 
 
 # =================================================
+# squared_euclidean!
+# =================================================
+x=randn(1000,10);
+y=randn(1000,10);
+w=randn(1000,10);
+dfdx1=similar(x);
+dfdx2=similar(x);
+
+@btime Misfits.error_squared_euclidean!(dfdx1,x,y,w)
+@btime Misfits.error_squared_euclidean!(nothing,x,y,w)
+@time f(x)=Misfits.error_squared_euclidean!(nothing,x,y,w)
+ForwardDiff.gradient!(dfdx2,f, x);
+
+@test dfdx1 ≈ reshape(dfdx2,100,10)
+
+
+rrrr
+
+
+# =================================================
 # weighted norm after auto-correlation
 # =================================================
 n1=100
@@ -103,23 +123,6 @@ dfdx1=similar(x);
 xvec=vec(x)
 dfdx2=similar(xvec);
 Inversion.finite_difference!(x -> Misfits.error_weighted_norm!(nothing, reshape(x,100,10), w), xvec, dfdx2, :central)
-
-@test dfdx1 ≈ reshape(dfdx2,100,10)
-
-
-
-# =================================================
-# squared_euclidean!
-# =================================================
-x=randn(100,10);
-y=randn(100,10);
-w=randn(100,10);
-dfdx1=similar(x);
-dfdx2=similar(x);
-
-@btime Misfits.error_squared_euclidean!(dfdx1,x,y,w)
-@time f(x)=Misfits.error_squared_euclidean!(nothing,x,y,w)
-ForwardDiff.gradient!(dfdx2,f, x);
 
 @test dfdx1 ≈ reshape(dfdx2,100,10)
 
