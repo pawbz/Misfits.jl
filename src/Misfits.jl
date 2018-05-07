@@ -5,7 +5,6 @@ module Misfits
 using ForwardDiff
 using Distances
 using StatsBase
-using Conv
 
 
 """
@@ -214,104 +213,5 @@ function error_weighted_norm!(dfdx,  x,   w)
 	return J
 end
 
-
-"""
-Each column of the matrix x is correlated with itself,
-the energy at non-zero las will be penalized and returned as J.
-"""
-function error_acorr_weighted_norm!(dfdx, x; paconv=nothing, dfdwav=nothing)
-	nt=size(x,1)
-	nr=size(x,2)
-	# create Conv mod if not preallocated
-	if(paconv===nothing)
-		paconv=Conv.Param(ntgf=nt, ntd=nt, ntwav=2*nt-1, dims=(nr,), wavlags=[nt-1, nt-1])
-	end
-
-	copy!(paconv.gf,x)
-	copy!(paconv.d,x)
-
-	Conv.mod!(paconv, :wav)
-	wav=paconv.wav
-	J=0.0
-	for ir in 1:nr
-		for it in 1:size(wav,1)
-			J += (wav[it,ir]) * (wav[it,ir]) * abs((nt-it)/(nt-1))
-		end
-	end
-
-	if(!(dfdx===nothing))
-
-		if(dfdwav===nothing)
-			dfdwav=zeros(paconv.wav)
-		end
-		for ir in 1:nr
-			for it in 1:size(wav,1)
-				dfdwav[it,ir] = 2.0 * (wav[it,ir]) * abs((nt-it)/(nt-1))
-			end
-		end
-
-		Conv.mod!(paconv, :gf, gf=dfdx, wav=dfdwav)
-
-		scale!(dfdx, 2.)
-	end
-
-	return J
-
-end
-
-"""
-type for corr_squared_euclidean
-"""
-mutable struct Param_CSE
-	paxcorr::Conv.Param_xcorr
-	Ax::Vector{Matrix{Float64}}
-	Ay::Vector{Matrix{Float64}}
-	dAx::Vector{Matrix{Float64}}
-end
-
-
-function Param_CSE(nt,nr;y=nothing, Ay=nothing)
-	paxcorr=Conv.Param_xcorr(nt,collect(1:nr),norm_flag=false)
-	Ax=[zeros(2*nt-1,nr-ir+1) for ir in 1:nr]
-	Ayy=[zeros(2*nt-1,nr-ir+1) for ir in 1:nr]
-	if(!(y===nothing))
-		Conv.xcorr!(Ayy,y,paxcorr)
-	elseif(!(Ay===nothing))
-		for ir in 1:nr
-			copy!(Ayy[ir],Ay[ir])
-		end
-	end
-	dAx=[zeros(2*nt-1,nr-ir+1) for ir in 1:nr]
-	return Param_CSE(paxcorr, Ax, Ayy, dAx)
-end
-
-function error_corr_squared_euclidean!(dfdx,  x,  pa)
-	nt=size(x,1)
-	nr=size(x,2)
-	Ax=pa.Ax
-	Ay=pa.Ay
-	dfdAx=pa.dAx
-
-	Conv.xcorr!(Ax, x, pa.paxcorr)
-
-	J=0.0
-	for ir in 1:length(Ax)
-		Axx=Ax[ir]
-		Ayy=Ay[ir]
-		dfdAxx=dfdAx[ir]
-
-		if(dfdx===nothing)
-			JJ=error_squared_euclidean!(nothing,  Axx,   Ayy,   nothing, norm_flag=false)
-		else
-			JJ=error_squared_euclidean!(dfdAxx,  Axx,   Ayy,   nothing, norm_flag=false)
-		end
-		J+=JJ
-	end
-	if(!(dfdx===nothing))
-		Conv.xcorr_grad!(dfdx, dfdAx, x, pa.paxcorr)
-	end
-
-	return J
-end
 
 end # module
