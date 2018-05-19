@@ -1,4 +1,3 @@
-using Revise
 using Misfits
 using Base.Test
 using ForwardDiff

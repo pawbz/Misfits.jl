@@ -213,5 +213,27 @@ function error_weighted_norm!(dfdx,  x,   w)
 	return J
 end
 
+"""
+Calculate the front load of dfdx
+"""
+function front_load!(dfdx,  x::Matrix{Float64})
+	nt=size(x,1)
+	nr=size(x,2)
+	J=zero(Float64)
+	for ir in 1:nr
+		for it in 1:nt
+			J += (x[it,ir]) * (x[it,ir]) * inv(nt-1)*(it-1)
+		end
+	end
+	if(!(dfdx === nothing))
+		for ir in 1:nr
+			for it in 1:nt
+				dfdx[it,ir] = 2.0 * (x[it,ir]) * inv(nt-1)*(it-1)
+			end
+		end
+	end
+	return J
+end
+
 
 end # module
