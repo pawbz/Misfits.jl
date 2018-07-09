@@ -116,8 +116,21 @@ function error_after_scaling{T}(
 			     y::AbstractArray{T}
 			    )
 	any(size(x) ≠ size(y)) && error("x and y different sizes") 
-	α = sum(x.*y)/sum(x.*x)
-	J = norm(y-α*x)/norm(y)
+	sxx=T(0.0)
+	sxy=T(0.0)
+	for i in eachindex(x)
+		sxx += x[i]*x[i]
+		sxy += x[i]*y[i]
+	end
+	α = sxy * inv(sxx)
+	
+	if(!(iszero(α)))
+		scale!(x, α)
+		J = error_squared_euclidean!(nothing,  x,   y,   nothing, norm_flag=true)
+		scale!(x, inv(α))
+	else
+		J = zero(T)
+	end
 
 	return J, α
 end
@@ -136,45 +149,38 @@ function error_after_normalized_autocor(x::AbstractArray{Float64}, y::AbstractAr
 end
 
 
-function fg_cls!{N}(dfdx, 
-		    x::AbstractArray{Float64,N}, 
-		    y::Array{Float64,N}, 
-		    w::Array{Float64,N}=ones(x))
-	(size(x) == size(y) == size(w)) || error("sizes mismatch")
-	f = sum(w .* (x - y).^2)
-	if(!(dfdx === nothing))
-		copy!(dfdx, 2.0 .* w .* (x-y))
-	end
-	return f
-end
 
+"""
+Compute the L2 distance between two arrays: ``\\sqrt{\\sum_{i=1}^n |a_i - b|^2}``.
+* `norm_flag` : optional; normalizes the distance with the norm of `y` (don't use in the inner loops)
+"""
 
 function error_squared_euclidean!(dfdx,  x,   y,   w; norm_flag=false)
 	J=zero(eltype(x))
 	if(w===nothing)
 		for i in eachindex(x)
-			J += (x[i]-y[i]) * (x[i]-y[i])
+			@inbounds J += abs2(x[i]-y[i])
 		end
 	else
 		for i in eachindex(x)
-			J += w[i] * (x[i]-y[i]) * (x[i]-y[i])
+			@inbounds J += w[i] * abs2(x[i]-y[i])
 		end
 	end
 	if(!(dfdx === nothing))
 		if(w===nothing)
 			for i in eachindex(x)
-				dfdx[i] = 2.0 * (x[i]-y[i])
+				@inbounds dfdx[i] = 2.0 * (x[i]-y[i])
 			end
 		else
 			for i in eachindex(x)
-				dfdx[i] = 2.0 * w[i] * (x[i]-y[i])
+				@inbounds dfdx[i] = 2.0 * w[i] * (x[i]-y[i])
 			end
 		end
 	end
 	if(norm_flag) # second norm of y
 		ynorm=zero(Float64)
 		for i in eachindex(y)
-			ynorm += y[i]*y[i]
+			@inbounds ynorm += abs2(y[i])
 		end
 		# divide the functional with ynorm
 		J /= ynorm
@@ -220,15 +226,20 @@ function front_load!(dfdx,  x::Matrix{Float64})
 	nt=size(x,1)
 	nr=size(x,2)
 	J=zero(Float64)
+	Jnorm=zero(Float64)
 	for ir in 1:nr
 		for it in 1:nt
 			J += (x[it,ir]) * (x[it,ir]) * inv(nt-1)*(it-1)
+			Jnorm += (x[it,ir]) * (x[it,ir]) 
 		end
 	end
+	J = J * inv(Jnorm)
 	if(!(dfdx === nothing))
+		error("incorrect gradient")
 		for ir in 1:nr
 			for it in 1:nt
 				dfdx[it,ir] = 2.0 * (x[it,ir]) * inv(nt-1)*(it-1)
+				dfdx[it,ir] = 0.0 # incorrect
 			end
 		end
 	end

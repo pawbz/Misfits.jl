@@ -18,7 +18,7 @@ dfdx2=similar(x);
 @time f(x)=Misfits.error_squared_euclidean!(nothing,x,y,w)
 ForwardDiff.gradient!(dfdx2,f, x);
 
-@test dfdx1 ≈ reshape(dfdx2,100,10)
+@test dfdx1 ≈ dfdx2
 
 
 rrrr
