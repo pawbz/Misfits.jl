@@ -2,7 +2,6 @@ using Misfits
 using Base.Test
 using ForwardDiff
 using BenchmarkTools
-using Conv
 
 
 # =================================================
