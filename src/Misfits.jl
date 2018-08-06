@@ -91,15 +91,15 @@ function derivative_vector_magnitude!(g,ghat,x,X=nothing)
 
 	# compute the outer product of 
 	if(!(X===nothing))      
-		A_mul_Bt!(X,x,x)        
+		mul!(X,x,transpose(x))        
 	else    
-		X=A_mul_Bt(x,x)
+		X=x*transpose(x)
 	end         
 	for i in 1:nx
 		X[i,i]=X[i,i]-1. 
 	end
 	rmul!(X,-inv(xn))
-	A_mul_B!(g,X,ghat)    
+	mul!(g,X,ghat)    
 	rmul!(x, xn) 
 end
 
@@ -124,9 +124,9 @@ function error_after_scaling(
 	α = sxy * inv(sxx)
 	
 	if(!(iszero(α)))
-		scale!(x, α)
+		rmul!(x, α)
 		J = error_squared_euclidean!(nothing,  x,   y,   nothing, norm_flag=true)
-		scale!(x, inv(α))
+		rmul!(x, inv(α))
 	else
 		J = zero(T)
 	end

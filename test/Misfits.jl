@@ -2,6 +2,7 @@ using Misfits
 using Test
 using ForwardDiff
 using BenchmarkTools
+using LinearAlgebra
 using Calculus
 
 
@@ -72,12 +73,12 @@ end
 # test derivative_vector_magnitude
 function g!(g, x, z)
     xn=vecnorm(x)
-    scale!(x, inv(xn))
+    rmul!(x, inv(xn))
     g1=similar(g)
     for i in eachindex(g1)
         g1[i]=2. * (x[i]-z[i])
     end
-         scale!(x, xn)
+         rmul!(x, xn)
          nx=length(x)
          X=zeros(nx,nx)
          @time Misfits.derivative_vector_magnitude!(g,g1,x,X)
