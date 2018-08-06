@@ -1,5 +1,5 @@
 using Misfits
-using Base.Test
+using Test
 using ForwardDiff
 using BenchmarkTools
 
@@ -18,52 +18,7 @@ dfdx2=similar(x);
 @time f(x)=Misfits.error_squared_euclidean!(nothing,x,y,w)
 ForwardDiff.gradient!(dfdx2,f, x);
 
-@test dfdx1 ≈ reshape(dfdx2,100,10)
-
-
-rrrr
-
-
-# =================================================
-# weighted norm after auto-correlation
-# =================================================
-n1=100
-n2=10
-
-x=randn(n1,n2);
-w=randn(n1,n2);
-dfdx1=similar(x);
-xvec=vec(x)
-dfdx2=similar(xvec);
-dfdwav=zeros(2*n1-1,n2)
-paconv=Conv.Param(ntgf=n1, ntd=n1, ntwav=2*n1-1, dims=(n2,), wavlags=[n1-1, n1-1])
-func=Misfits.error_acorr_weighted_norm!
-@btime func(dfdx1,x,dfdwav=dfdwav, paconv=paconv)
-Inversion.finite_difference!(x -> func(nothing, reshape(x,n1,n2),
-					    dfdwav=dfdwav, paconv=paconv), xvec, dfdx2, :central)
-
-@test dfdx1 ≈ reshape(dfdx2,n1,n2)
-
-
-
-# =================================================
-# squared euclidean after after xcorr
-# =================================================
-n1=50
-n2=4
-
-x=randn(n1,n2);
-y=randn(n1,n2);
-Ay=Conv.xcorr(y)
-dfdx1=similar(x);
-xvec=vec(x)
-dfdx2=similar(xvec);
-func=Misfits.error_corr_squared_euclidean!
-pa=Misfits.Param_CSE(n1,n2, y)
-@btime func(dfdx1,x,pa)
-Inversion.finite_difference!(x -> func(nothing, reshape(x,n1,n2),pa), xvec, dfdx2, :central)
-
-@test dfdx1 ≈ reshape(dfdx2,n1,n2)
+@test dfdx1 ≈ dfdx2
 
 
 # =================================================
@@ -121,9 +76,9 @@ dfdx1=similar(x);
 @btime Misfits.error_weighted_norm!(dfdx1,x,w)
 xvec=vec(x)
 dfdx2=similar(xvec);
-Inversion.finite_difference!(x -> Misfits.error_weighted_norm!(nothing, reshape(x,100,10), w), xvec, dfdx2, :central)
+ForwardDiff.gradient!(dfdx2,x -> Misfits.error_weighted_norm!(nothing, reshape(x,100,10), w), xvec);
 
-@test dfdx1 ≈ reshape(dfdx2,100,10)
+@test vec(dfdx1) ≈ vec(dfdx2)
 
 
 # =================================================
@@ -143,7 +98,7 @@ function g!(g, x, z)
     scale!(x, inv(xn))
     g1=similar(g)
     for i in eachindex(g1)
-        g1[i]=2.*(x[i]-z[i])
+        g1[i]=2. * (x[i]-z[i])
     end
          scale!(x, xn)
          nx=length(x)

@@ -1,10 +1,9 @@
-__precompile__()
-
 module Misfits
 
 using ForwardDiff
 using Distances
 using StatsBase
+using LinearAlgebra
 
 
 """
@@ -88,7 +87,7 @@ function
 function derivative_vector_magnitude!(g,ghat,x,X=nothing) 
 	xn=vecnorm(x)
 	nx=length(x)
-	scale!(x, inv(xn))  
+	rmul!(x, inv(xn))  
 
 	# compute the outer product of 
 	if(!(X===nothing))      
@@ -99,9 +98,9 @@ function derivative_vector_magnitude!(g,ghat,x,X=nothing)
 	for i in 1:nx
 		X[i,i]=X[i,i]-1. 
 	end
-	scale!(X,-inv(xn))
+	rmul!(X,-inv(xn))
 	A_mul_B!(g,X,ghat)    
-	scale!(x, xn) 
+	rmul!(x, xn) 
 end
 
 """
@@ -111,10 +110,10 @@ Return misfit and α such that αx-y is minimum.
 Normalization is done with respect to the 
 norm of y.
 """
-function error_after_scaling{T}(
+function error_after_scaling(
 			     x::AbstractArray{T},
 			     y::AbstractArray{T}
-			    )
+			     ) where {T}
 	any(size(x) ≠ size(y)) && error("x and y different sizes") 
 	α = sum(x.*y)/sum(x.*x)
 	J = norm(y-α*x)/norm(y)
@@ -135,18 +134,6 @@ function error_after_normalized_autocor(x::AbstractArray{Float64}, y::AbstractAr
 	return error_squared_euclidean!(nothing,  ax,   ay, nothing, norm_flag=true)
 end
 
-
-function fg_cls!{N}(dfdx, 
-		    x::AbstractArray{Float64,N}, 
-		    y::Array{Float64,N}, 
-		    w::Array{Float64,N}=ones(x))
-	(size(x) == size(y) == size(w)) || error("sizes mismatch")
-	f = sum(w .* (x - y).^2)
-	if(!(dfdx === nothing))
-		copy!(dfdx, 2.0 .* w .* (x-y))
-	end
-	return f
-end
 
 
 function error_squared_euclidean!(dfdx,  x,   y,   w; norm_flag=false)
@@ -179,7 +166,7 @@ function error_squared_euclidean!(dfdx,  x,   y,   w; norm_flag=false)
 		# divide the functional with ynorm
 		J /= ynorm
 		if(!(dfdx === nothing)) 
-			scale!(dfdx, inv(ynorm)) # divide dfdx with ynorm too
+			rmul!(dfdx, inv(ynorm)) # divide dfdx with ynorm too
 		end
 	end
 	return J
