@@ -87,10 +87,10 @@ end
 
 x=randn(10)
 z=randn(10)
-g1=zeros(x)
+g1=zero(x)
 f1(x)=f(x,z)
 ForwardDiff.gradient!(g1,f1, x)
-g2=zeros(x)
+g2=zero(x)
 @time g!(g2,x,z)
 @test g1 ≈ g2
 
