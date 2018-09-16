@@ -23,8 +23,8 @@ function error_pairwise_corr_dist(dfdx,x)
 end
 
 function error_corr_dist!(dfdx, x, y)
-	xn=vecnorm(x)
-	yn=vecnorm(y)
+	xn=norm(x)
+	yn=norm(y)
 
 	dotxy=0.0
 	for i in eachindex(x)
@@ -85,7 +85,7 @@ function
 * `X`	 : preallocated matrix of dimension (nx,nx) if necessary
 """
 function derivative_vector_magnitude!(g,ghat,x,X=nothing) 
-	xn=vecnorm(x)
+	xn=norm(x)
 	nx=length(x)
 	rmul!(x, inv(xn))  
 

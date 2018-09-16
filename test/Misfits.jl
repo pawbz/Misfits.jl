@@ -65,14 +65,14 @@ dfdx2=Calculus.gradient(x -> Misfits.error_weighted_norm!(nothing, reshape(x,100
 
 # some func
 function f(x, z)
-    y=x./vecnorm(x)
+    y=x./norm(x)
     J=sum((y-z).^2)
     return J
 end
 
 # test derivative_vector_magnitude
 function g!(g, x, z)
-    xn=vecnorm(x)
+    xn=norm(x)
     rmul!(x, inv(xn))
     g1=similar(g)
     for i in eachindex(g1)
