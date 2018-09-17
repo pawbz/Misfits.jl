@@ -4,6 +4,7 @@ using ForwardDiff
 using Distances
 using StatsBase
 using LinearAlgebra
+using LinearMaps
 
 
 """
@@ -240,6 +241,56 @@ function front_load!(dfdx,  x::Matrix{Float64})
 				dfdx[it,ir] = 0.0 # incorrect
 			end
 		end
+	end
+	return J
+end
+
+"""
+type for computing the generalized least-squares error
+* `Q` : must be symmetric, inverse covariance matrix
+"""
+mutable struct P_gls{T}
+	Q::LinearMaps.LinearMap{T} # inverse covariance matrix, must be symmetric
+	r::Vector{T} # store residual temporarily
+	Qr::Vector{T} # store Q*r temporarily
+end
+
+"""
+# Q is a diagonal matrix with α
+* `n` : size
+"""
+function P_gls(n,α)
+	Q=LinearMap(
+	     (y,x)->LinearAlgebra.mul!(y,x,α), 
+	     (y,x)->LinearAlgebra.mul!(y,x,α), 
+		      n, n, ismutating=true, issymmetric=true)
+	r=zeros(n)
+	Qr=zeros(n)
+	return P_gls(Q,r,Qr)
+end
+
+function P_gls(Q)
+	n=size(Q,1)
+	r=zeros(n)
+	Qr=zeros(n)
+	return P_gls(Q,r,Qr)
+end
+
+
+
+function func_grad!(dfdx,  x,   y, pa::P_gls)
+	# compute the difference
+	for i in eachindex(x)
+		pa.r[i]=x[i]-y[i]
+	end
+
+	mul!(pa.Qr, pa.Q, pa.r)
+
+	J=pa.r' * pa.Qr
+
+	if(!(dfdx === nothing))
+		mul!(dfdx,pa.Q,pa.r)
+		rmul!(dfdx,2.0)
 	end
 	return J
 end

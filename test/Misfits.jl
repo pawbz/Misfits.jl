@@ -4,7 +4,23 @@ using ForwardDiff
 using BenchmarkTools
 using LinearAlgebra
 using Calculus
+using LinearMaps
 
+# =================================================
+# generalized least-squares
+# =================================================
+x=abs2.(randn(10,10))
+Q=x*x'
+pa=Misfits.P_gls(LinearMap(Q))
+x=randn(10);
+y=randn(10);
+dfdx1=similar(x);
+@btime Misfits.func_grad!(dfdx1,x,y, pa)
+@btime Misfits.func_grad!(nothing,x,y, pa)
+f(x)=Misfits.func_grad!(nothing,x,y, pa)
+dfdx2=Calculus.gradient(f,x)
+
+@test dfdx1 ≈ dfdx2
 
 # =================================================
 # squared_euclidean!
@@ -17,7 +33,7 @@ dfdx2=similar(x);
 
 @btime Misfits.error_squared_euclidean!(dfdx1,x,y,w)
 @btime Misfits.error_squared_euclidean!(nothing,x,y,w)
-@time f(x)=Misfits.error_squared_euclidean!(nothing,x,y,w)
+f(x)=Misfits.error_squared_euclidean!(nothing,x,y,w)
 ForwardDiff.gradient!(dfdx2,f, x);
 
 @test dfdx1 ≈ dfdx2
