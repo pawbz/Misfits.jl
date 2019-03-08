@@ -111,10 +111,10 @@ Return misfit and α such that αx-y is minimum.
 Normalization is done with respect to the 
 norm of y.
 """
-function error_after_scaling{T}(
+function error_after_scaling(
 			     x::AbstractArray{T},
 			     y::AbstractArray{T}
-			    )
+			     ) where T
 	any(size(x) ≠ size(y)) && error("x and y different sizes") 
 	sxx=T(0.0)
 	sxy=T(0.0)
