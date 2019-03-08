@@ -1,0 +1,13 @@
+name = "Misfits"
+uuid = "b5bed6b1-4eab-585a-ab29-0604291a8c0e"
+version = "0.0.0"
+
+[deps]
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+Calculus = "49dc2e85-a5d0-5ad3-a950-438e2897f1b9"
+Distances = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+LinearMaps = "7a12625a-238d-50fd-b39a-03d52299707e"
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

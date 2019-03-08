@@ -1,10 +1,10 @@
-__precompile__()
-
 module Misfits
 
 using ForwardDiff
 using Distances
 using StatsBase
+using LinearAlgebra
+using LinearMaps
 
 
 """
@@ -24,8 +24,8 @@ function error_pairwise_corr_dist(dfdx,x)
 end
 
 function error_corr_dist!(dfdx, x, y)
-	xn=vecnorm(x)
-	yn=vecnorm(y)
+	xn=norm(x)
+	yn=norm(y)
 
 	dotxy=0.0
 	for i in eachindex(x)
@@ -86,22 +86,22 @@ function
 * `X`	 : preallocated matrix of dimension (nx,nx) if necessary
 """
 function derivative_vector_magnitude!(g,ghat,x,X=nothing) 
-	xn=vecnorm(x)
+	xn=norm(x)
 	nx=length(x)
-	scale!(x, inv(xn))  
+	rmul!(x, inv(xn))  
 
 	# compute the outer product of 
 	if(!(X===nothing))      
-		A_mul_Bt!(X,x,x)        
+		mul!(X,x,transpose(x))        
 	else    
-		X=A_mul_Bt(x,x)
+		X=x*transpose(x)
 	end         
 	for i in 1:nx
 		X[i,i]=X[i,i]-1. 
 	end
-	scale!(X,-inv(xn))
-	A_mul_B!(g,X,ghat)    
-	scale!(x, xn) 
+	rmul!(X,-inv(xn))
+	mul!(g,X,ghat)    
+	rmul!(x, xn) 
 end
 
 """
@@ -114,7 +114,11 @@ norm of y.
 function error_after_scaling(
 			     x::AbstractArray{T},
 			     y::AbstractArray{T}
+<<<<<<< HEAD
 			     ) where T
+=======
+			     ) where {T}
+>>>>>>> 3a08686ed90e54fa41e4fc244d1d43b4ef11bcf9
 	any(size(x) ≠ size(y)) && error("x and y different sizes") 
 	sxx=T(0.0)
 	sxy=T(0.0)
@@ -125,9 +129,9 @@ function error_after_scaling(
 	α = sxy * inv(sxx)
 	
 	if(!(iszero(α)))
-		scale!(x, α)
+		rmul!(x, α)
 		J = error_squared_euclidean!(nothing,  x,   y,   nothing, norm_flag=true)
-		scale!(x, inv(α))
+		rmul!(x, inv(α))
 	else
 		J = zero(T)
 	end
@@ -154,7 +158,6 @@ end
 Compute the L2 distance between two arrays: ``\\sqrt{\\sum_{i=1}^n |a_i - b|^2}``.
 * `norm_flag` : optional; normalizes the distance with the norm of `y` (don't use in the inner loops)
 """
-
 function error_squared_euclidean!(dfdx,  x,   y,   w; norm_flag=false)
 	J=zero(eltype(x))
 	if(w===nothing)
@@ -185,7 +188,7 @@ function error_squared_euclidean!(dfdx,  x,   y,   w; norm_flag=false)
 		# divide the functional with ynorm
 		J /= ynorm
 		if(!(dfdx === nothing)) 
-			scale!(dfdx, inv(ynorm)) # divide dfdx with ynorm too
+			rmul!(dfdx, inv(ynorm)) # divide dfdx with ynorm too
 		end
 	end
 	return J
@@ -222,26 +225,86 @@ end
 """
 Calculate the front load of dfdx
 """
-function front_load!(dfdx,  x::Matrix{Float64})
+function front_load!(dfdx,  x::AbstractMatrix)
 	nt=size(x,1)
 	nr=size(x,2)
 	J=zero(Float64)
-	Jnorm=zero(Float64)
 	for ir in 1:nr
 		for it in 1:nt
-			J += (x[it,ir]) * (x[it,ir]) * inv(nt-1)*(it-1)
-			Jnorm += (x[it,ir]) * (x[it,ir]) 
+			J += abs2(x[it,ir] * inv(nt-1) * (it-1))
 		end
 	end
-	J = J * inv(Jnorm)
 	if(!(dfdx === nothing))
-		error("incorrect gradient")
 		for ir in 1:nr
 			for it in 1:nt
-				dfdx[it,ir] = 2.0 * (x[it,ir]) * inv(nt-1)*(it-1)
-				dfdx[it,ir] = 0.0 # incorrect
+				dfdx[it,ir] = 2.0 * (x[it,ir]) * 
+					abs2(inv(nt-1) * (it-1))
 			end
 		end
+	end
+	return J
+end
+
+"""
+Compute error b/w g1 and g2 after ingnoring time translation
+allocates a lot of memory, dont use for big data
+"""
+function error_after_translation(g1,g2)
+	err=[]
+	for is in 1:size(g1,1)
+		g11=circshift(g1,(is,0))
+		push!(err,Misfits.error_after_scaling(g11,g2)[1])
+	end
+	return minimum(err)
+end
+
+
+"""
+type for computing the generalized least-squares error
+* `Q` : must be symmetric, inverse covariance matrix
+"""
+mutable struct P_gls{T}
+	Q::LinearMaps.LinearMap{T} # inverse covariance matrix, must be symmetric
+	r::Vector{T} # store residual temporarily
+	Qr::Vector{T} # store Q*r temporarily
+end
+
+"""
+# Q is a diagonal matrix with α
+* `n` : size
+"""
+function P_gls(n,α)
+	Q=LinearMap(
+	     (y,x)->LinearAlgebra.mul!(y,x,α), 
+	     (y,x)->LinearAlgebra.mul!(y,x,α), 
+		      n, n, ismutating=true, issymmetric=true)
+	r=zeros(n)
+	Qr=zeros(n)
+	return P_gls(Q,r,Qr)
+end
+
+function P_gls(Q)
+	n=size(Q,1)
+	r=zeros(n)
+	Qr=zeros(n)
+	return P_gls(Q,r,Qr)
+end
+
+
+
+function func_grad!(dfdx,  x,   y, pa::P_gls)
+	# compute the difference
+	for i in eachindex(x)
+		pa.r[i]=x[i]-y[i]
+	end
+
+	mul!(pa.Qr, pa.Q, pa.r)
+
+	J=pa.r' * pa.Qr
+
+	if(!(dfdx === nothing))
+		mul!(dfdx,pa.Q,pa.r)
+		rmul!(dfdx,2.0)
 	end
 	return J
 end
