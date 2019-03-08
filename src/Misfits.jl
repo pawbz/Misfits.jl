@@ -221,29 +221,39 @@ end
 """
 Calculate the front load of dfdx
 """
-function front_load!(dfdx,  x::Matrix{Float64})
+function front_load!(dfdx,  x::AbstractMatrix)
 	nt=size(x,1)
 	nr=size(x,2)
 	J=zero(Float64)
-	Jnorm=zero(Float64)
 	for ir in 1:nr
 		for it in 1:nt
-			J += (x[it,ir]) * (x[it,ir]) * inv(nt-1)*(it-1)
-			Jnorm += (x[it,ir]) * (x[it,ir]) 
+			J += abs2(x[it,ir] * inv(nt-1) * (it-1))
 		end
 	end
-	J = J * inv(Jnorm)
 	if(!(dfdx === nothing))
-		error("incorrect gradient")
 		for ir in 1:nr
 			for it in 1:nt
-				dfdx[it,ir] = 2.0 * (x[it,ir]) * inv(nt-1)*(it-1)
-				dfdx[it,ir] = 0.0 # incorrect
+				dfdx[it,ir] = 2.0 * (x[it,ir]) * 
+					abs2(inv(nt-1) * (it-1))
 			end
 		end
 	end
 	return J
 end
+
+"""
+Compute error b/w g1 and g2 after ingnoring time translation
+allocates a lot of memory, dont use for big data
+"""
+function error_after_translation(g1,g2)
+	err=[]
+	for is in 1:size(g1,1)
+		g11=circshift(g1,(is,0))
+		push!(err,Misfits.error_after_scaling(g11,g2)[1])
+	end
+	return minimum(err)
+end
+
 
 """
 type for computing the generalized least-squares error
