@@ -114,11 +114,7 @@ norm of y.
 function error_after_scaling(
 			     x::AbstractArray{T},
 			     y::AbstractArray{T}
-<<<<<<< HEAD
 			     ) where T
-=======
-			     ) where {T}
->>>>>>> 3a08686ed90e54fa41e4fc244d1d43b4ef11bcf9
 	any(size(x) ≠ size(y)) && error("x and y different sizes") 
 	sxx=T(0.0)
 	sxy=T(0.0)
